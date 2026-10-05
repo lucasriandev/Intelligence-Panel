@@ -1,0 +1,50 @@
+// Prisma 7: a URL de conexão NÃO fica mais aqui, fica em prisma.config.ts
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Produto {
+  id            Int      @id
+  nome          String
+  categoria     String?
+  estoqueAtual  Int      @default(0) @map("estoque_atual")
+  criadoEm      DateTime @default(now()) @map("criado_em")
+
+  vendas        VendaHistorica[]
+  previsoes     PrevisaoDemanda[]
+
+  @@map("produtos")
+}
+
+// Histórico de vendas (alimentado pelo CSV via Python)
+model VendaHistorica {
+  id         Int      @id @default(autoincrement())
+  produtoId  Int      @map("produto_id")
+  data       DateTime
+  quantidade Int
+
+  produto    Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@unique([produtoId, data])
+  @@index([produtoId, data])
+  @@map("vendas_historicas")
+}
+
+// Previsões geradas pelo modelo Scikit-Learn (próximos 7 dias)
+model PrevisaoDemanda {
+  id                 Int      @id @default(autoincrement())
+  produtoId          Int      @map("produto_id")
+  dataPrevista       DateTime @map("data_prevista")
+  quantidadePrevista Float    @map("quantidade_prevista")
+  geradoEm           DateTime @default(now()) @map("gerado_em")
+
+  produto            Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@unique([produtoId, dataPrevista])
+  @@index([dataPrevista])
+  @@map("previsoes_demanda")
+}
